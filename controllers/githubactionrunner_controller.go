@@ -331,9 +331,9 @@ func (r *GithubActionRunnerReconciler) listRelatedPods(ctx context.Context, cr *
 		return nil, err
 	}
 
-	// filter result by owner-ref since it cannot be done server-side
+        // filter result by owner-ref since it cannot be done server-side + exclude failed pods
 	podList.Items = funk.Filter(podList.Items, func(pod corev1.Pod) bool {
-		return util.IsOwner(cr, &pod)
+		return util.IsOwner(cr, &pod) && pod.Status.Phase != corev1.PodFailed
 	}).([]corev1.Pod)
 
 	return podList, nil
@@ -417,7 +417,7 @@ func (r *GithubActionRunnerReconciler) getPodRunnerPairs(ctx context.Context, cr
 
 	allRunners, err := r.GithubAPI.GetRunners(ctx, cr.Spec.Organization, cr.Spec.Repository, token)
 	runners := funk.Filter(allRunners, func(r *github.Runner) bool {
-		return strings.HasPrefix(r.GetName(), cr.Name)
+		return strings.HasPrefix(r.GetName(), cr.Name) && *r.Status != "offline"
 	}).([]*github.Runner)
 
 	if err != nil {
